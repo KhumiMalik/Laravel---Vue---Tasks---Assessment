@@ -2,6 +2,5 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+// Everything that isn't the API is handed to Vue Router.
+Route::view('/{any?}', 'app')->where('any', '^(?!api/|sanctum/|up$).*$');

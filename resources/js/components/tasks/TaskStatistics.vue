@@ -18,9 +18,14 @@ const cards = computed(() => [
 </script>
 
 <template>
-    <section aria-label="Task statistics" class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div v-for="card in cards" :key="card.label" class="flex items-center gap-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-900/5">
-            <span class="flex size-11 shrink-0 items-center justify-center rounded-xl" :class="card.tone">
+    <!-- 2x2 on phones: stacking four cards pushed the task list a full screen down -->
+    <section aria-label="Task statistics" class="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+        <div
+            v-for="card in cards"
+            :key="card.label"
+            class="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-900/5 sm:gap-4 sm:p-5"
+        >
+            <span class="hidden size-11 shrink-0 items-center justify-center rounded-xl sm:flex" :class="card.tone">
                 <AppIcon :name="card.icon" class="size-6" />
             </span>
             <div>
@@ -29,8 +34,8 @@ const cards = computed(() => [
             </div>
         </div>
 
-        <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-900/5">
-            <div class="flex items-baseline justify-between">
+        <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-900/5 sm:p-5">
+            <div class="flex flex-wrap items-baseline justify-between gap-x-2">
                 <p class="text-sm text-slate-500">Completion rate</p>
                 <p class="text-2xl font-semibold tabular-nums text-slate-900">{{ completionRate }}%</p>
             </div>

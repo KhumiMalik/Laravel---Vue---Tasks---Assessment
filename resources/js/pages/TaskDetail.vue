@@ -50,6 +50,16 @@ async function load() {
 // the same component instance is reused when hopping between tasks
 watch(() => props.id, load, { immediate: true });
 
+// router.afterEach sets the generic title; swap in the task name once we have it
+watch(
+    () => task.value?.title,
+    (title) => {
+        if (title) {
+            document.title = `${title} · ${import.meta.env.VITE_APP_NAME || 'TaskFlow'}`;
+        }
+    },
+);
+
 async function toggle() {
     toggling.value = true;
 

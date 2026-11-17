@@ -32,7 +32,7 @@ const iconButton =
         <div class="min-w-0 flex-1">
             <RouterLink
                 :to="{ name: 'tasks.show', params: { id: task.id } }"
-                class="block truncate rounded text-sm font-medium transition-colors hover:text-indigo-600 focus-visible:outline-2 focus-visible:outline-indigo-600"
+                class="line-clamp-2 rounded text-sm font-medium break-words transition-colors hover:text-indigo-600 focus-visible:outline-2 focus-visible:outline-indigo-600"
                 :class="task.is_completed ? 'text-slate-400 line-through decoration-slate-300' : 'text-slate-900'"
             >
                 {{ task.title }}

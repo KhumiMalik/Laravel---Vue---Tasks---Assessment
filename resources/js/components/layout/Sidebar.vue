@@ -56,8 +56,8 @@ async function signOut() {
     </Transition>
 
     <aside
-        class="fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-slate-200 bg-white transition-transform duration-200 lg:translate-x-0"
-        :class="open ? 'translate-x-0 shadow-xl' : '-translate-x-full'"
+        class="fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-slate-200 bg-white transition-[translate,visibility] duration-200 lg:visible lg:translate-x-0"
+        :class="open ? 'translate-x-0 shadow-xl' : 'invisible -translate-x-full'"
         aria-label="Main navigation"
         @keydown.esc="open = false"
     >

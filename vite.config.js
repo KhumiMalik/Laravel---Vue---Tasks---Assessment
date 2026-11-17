@@ -1,3 +1,4 @@
+import { fileURLToPath, URL } from 'node:url';
 import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
 import tailwindcss from '@tailwindcss/vite';
@@ -22,16 +23,12 @@ export default defineConfig({
     ],
     resolve: {
         alias: {
-            '@': '/resources/js',
+            '@': fileURLToPath(new URL('./resources/js', import.meta.url)),
         },
     },
     server: {
         watch: {
             ignored: ['**/storage/framework/views/**'],
         },
-    },
-    test: {
-        environment: 'jsdom',
-        include: ['resources/js/**/*.test.js'],
     },
 });

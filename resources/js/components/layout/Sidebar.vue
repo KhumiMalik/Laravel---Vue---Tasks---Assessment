@@ -17,6 +17,7 @@ const signingOut = ref(false);
 const NAV = [
     { label: 'My tasks', icon: 'check-circle', to: { name: 'dashboard' }, matches: ['dashboard', 'tasks.show'] },
     { label: 'Trash', icon: 'trash', to: { name: 'trash' }, matches: ['trash'] },
+    { label: 'Weather', icon: 'sun', to: { name: 'weather' }, matches: ['weather'] },
 ];
 
 const initials = computed(() =>

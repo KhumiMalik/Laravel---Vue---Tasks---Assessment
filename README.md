@@ -18,9 +18,10 @@ A full-stack task manager built with **Laravel 13** (REST API) and a **Vue 3** s
 7. [Running the app](#running-the-app)
 8. [Testing](#testing)
 9. [API reference](#api-reference)
-10. [Security notes](#security-notes)
-11. [Screenshots](#screenshots)
-12. [Known limitations](#known-limitations)
+10. [Step 3 — Public API Integration](#step-3--public-api-integration)
+11. [Security notes](#security-notes)
+12. [Screenshots](#screenshots)
+13. [Known limitations](#known-limitations)
 
 ---
 
@@ -299,7 +300,7 @@ Set `APP_ENV=production` and `APP_DEBUG=false`. In production the password rules
 php artisan test
 ```
 
-This runs **73 tests / 258 assertions** against an in-memory SQLite database. You don't need any setup, and the queue runs synchronously.
+This runs **89 tests / 349 assertions** against an in-memory SQLite database. You don't need any setup, and the queue runs synchronously.
 
 To run the same suite against MySQL, create an empty database and override the connection:
 
@@ -320,6 +321,7 @@ $env:DB_CONNECTION='mysql'; $env:DB_DATABASE='moneta_assessment_testing'; php ar
 - **Trash:** restore and force delete, and 409 when the task isn't in the trash.
 - **The completion event:** fired only on a false → true change, plus the activity feed and statistics.
 - **The policy** (unit-tested) and **the SPA catch-all route**.
+- **Weather:** success mapping, validation, city not found, geocoding/forecast outages, timeout, malformed payloads, guest access and the rate limit. Open-Meteo is faked with `Http::fake()` and stray requests are blocked, so the suite never touches the network.
 
 ### Frontend (Vitest)
 
@@ -327,10 +329,11 @@ $env:DB_CONNECTION='mysql'; $env:DB_DATABASE='moneta_assessment_testing'; php ar
 npm test
 ```
 
-This runs **21 tests** for:
+This runs **30 tests** for:
 - `TaskForm`: validation, trimming, create vs. edit payloads and server errors;
 - `TaskFilters`: the v-model contract, counts and the clear button;
-- the `safeRedirect` open-redirect guard.
+- the `safeRedirect` open-redirect guard;
+- the Weather page: empty-search guard, loading state and duplicate-submit block, result rendering, clearing the old result, not-found / outage / timeout messages and retry.
 
 ### Code style
 
@@ -388,6 +391,7 @@ curl -b jar http://localhost:8000/api/tasks?status=pending \
 | POST | `/tasks/{id}/restore` | Restore a trashed task | 200 |
 | DELETE | `/tasks/{id}/force-delete` | Permanently delete a trashed task | 204 |
 | GET | `/activities` | Latest completion activity (8 items) | 200 |
+| GET | `/weather?city={name}` | Current weather for a city (see [Step 3](#step-3--public-api-integration)) | 200 |
 
 **`GET /tasks` query parameters:**
 - `search`: title contains, up to 255 characters.
@@ -448,7 +452,89 @@ Statistics:
 | 409 | Restore / force-delete on a task that isn't in the trash | `{ "message": "Only tasks in the trash can be restored." }` |
 | 419 | Missing or expired CSRF token | `{ "message": "CSRF token mismatch." }` |
 | 422 | Validation failed | `{ "message": "…", "errors": { "title": ["…"] } }` |
-| 429 | Too many login / register attempts | `{ "message": "…" }` |
+| 429 | Too many login / register / weather requests | `{ "message": "…" }` |
+
+---
+
+## Step 3 — Public API Integration
+
+**API used:** [Open-Meteo](https://open-meteo.com/). Docs: [forecast API](https://open-meteo.com/en/docs) and [geocoding API](https://open-meteo.com/en/docs/geocoding-api). It's free and has no API key, so **no extra environment variables are needed**. The base URLs and timeouts are set in `config/services.php` under `open_meteo`.
+
+Signed-in users type a city name on the **Weather** page and see the current weather there. The browser only ever calls our own `/api/weather`; all requests to Open-Meteo come from Laravel's HTTP client.
+
+### Endpoint
+
+```
+GET /api/weather?city=Lahore
+```
+
+It needs a signed-in session, like the task routes, and is throttled to 30 requests a minute per user.
+
+```json
+{
+  "data": {
+    "city": "Lahore",
+    "region": "Punjab",
+    "country": "Pakistan",
+    "temperature": 23.7,
+    "feels_like": 23.6,
+    "humidity": 46,
+    "condition": "Clear sky",
+    "weather_code": 0,
+    "wind_speed": 4.7,
+    "precipitation": 0,
+    "is_day": true,
+    "observed_at": "2026-11-17T12:15"
+  }
+}
+```
+
+- Temperatures are in °C, wind in km/h and precipitation in mm. These units are pinned in the request rather than relying on Open-Meteo's defaults.
+- `observed_at` is the local time at the city.
+- `region` is returned so you can tell which "Paris" or "Hyderabad" was picked.
+- `feels_like`, `humidity`, `wind_speed`, `precipitation` and `observed_at` can be `null` if Open-Meteo leaves them out. Temperature and the weather code are required.
+
+### How a lookup works
+
+1. **`CurrentWeatherRequest` validates `city`.** It's required, 2–100 characters, and allows letters (accents included), spaces, hyphens, apostrophes and periods. Commas are rejected because Open-Meteo searches by place name only, so `Lahore, Pakistan` would match nothing. The error tells the user to enter just the city name.
+2. **`WeatherService` geocodes the name.** It calls `geocoding-api.open-meteo.com/v1/search?name=…&count=1` and takes the top-ranked match. If there's no match, Open-Meteo leaves out the `results` key, and we return a 404 without calling the forecast API.
+3. **`WeatherService` fetches the current conditions** from `api.open-meteo.com/v1/forecast`, using the match's latitude and longitude, `current=temperature_2m,apparent_temperature,…` and `timezone=auto`.
+4. **`WeatherService` builds the response** shown above. It maps the WMO weather code to a readable condition using the table in the Open-Meteo docs; any unknown code becomes `"Unknown"`.
+5. **`WeatherController` returns `{ "data": … }`**, the same envelope as the other endpoints. It's a single service rather than an action plus a service, because the work is two dependent external calls plus mapping, with nothing to orchestrate.
+
+### Errors
+
+| Status | When | Message shown |
+|---|---|---|
+| 422 | Missing or invalid city | Field error under the search box |
+| 404 | No geocoding match | "We couldn't find a city called "…". Check the spelling and try again." |
+| 503 | Open-Meteo returned an HTTP error | "The weather service is unavailable right now…" |
+| 504 | Connection failed or timed out (connect 5 s, total 10 s) | "The weather service took too long to respond…" |
+| 502 | Response was not JSON, or required fields were missing | "The weather service sent back data we couldn't read…" |
+
+All of these are thrown as `WeatherLookupException` and rendered as `{ "message": "…" }`. The upstream status, its error reason, or the start of an unreadable body is written to the Laravel log, never to the response.
+
+### Frontend
+
+- `pages/Weather.vue` is a lazy-loaded `/weather` route behind the auth guard, and the sidebar has a **Weather** link.
+- `components/weather/WeatherCard.vue` shows the result. Its icon depends on the weather code and on day or night, and the glyphs are added to the existing inline `AppIcon`, so there's no new package.
+- `services/weatherService.js` calls our API through the shared Axios instance.
+- You can search with Enter or the button. An empty search is caught before any request is sent.
+- While a request is in flight, the button shows a spinner and further submits are ignored.
+- The previous result is cleared as soon as a new search starts, so it's never shown against the wrong city.
+- Not-found, outage and timeout each get their own message. Outage and timeout also offer **Try again**.
+
+### Try it
+
+1. Sign in, for example as `demo@example.com` / `password`, and click **Weather** in the sidebar, or open `/weather`.
+2. Search for **Lahore**. Other good tests are `London`, `Tokyo`, `São Paulo`, and `Atlantis` for the not-found message.
+
+From the command line, with the cookie jar from [Authenticating from Postman / curl](#authenticating-from-postman--curl):
+
+```bash
+curl -b jar "http://localhost:8000/api/weather?city=Lahore" \
+  -H "Accept: application/json" -H "Referer: http://localhost:8000"
+```
 
 ---
 
@@ -460,7 +546,8 @@ Statistics:
 - **Search:** the search term is LIKE-escaped, so `%` and `_` match literally and can't widen the query.
 - **No information leaks:** 404 responses are generic, and 5xx details are never shown to users. With `APP_DEBUG=false`, Laravel doesn't send them either.
 - **Login redirects:** `?redirect=` after sign-in only follows in-app paths, which blocks open redirects such as `//evil.example`.
-- **Rate limits:** login and registration are rate-limited. Passwords are hashed with bcrypt, and production uses stricter rules.
+- **Rate limits:** login, registration and weather lookups (30/min per user) are rate-limited. Passwords are hashed with bcrypt, and production uses stricter rules.
+- **Third-party API:** Open-Meteo is called only from the server. Its error bodies and connection errors are logged, not returned.
 
 ---
 
@@ -474,6 +561,7 @@ Statistics:
 | Dashboard | `docs/screenshots/dashboard.png` |
 | Task details | `docs/screenshots/task-detail.png` |
 | Trash | `docs/screenshots/trash.png` |
+| Weather | `docs/screenshots/weather.png` |
 | Mobile | `docs/screenshots/mobile.png` |
 
 ---
@@ -483,4 +571,6 @@ Statistics:
 - **The activity feed depends on the queue worker.** Without `php artisan queue:work`, or `QUEUE_CONNECTION=sync`, completions are queued but don't show up in "Recent activity".
 - **The dashboard refreshes the activity feed once, 1.5 s after a completion.** A slow worker means a manual reload. Real-time updates (broadcasting) were out of scope.
 - **`npm audit` reports moderate advisories** in `js-beautify`, which `@vue/test-utils` pulls in. It's a dev/test-only dependency and isn't in the production bundle. The fix npm suggests is a downgrade, so it's left as is.
+- **Weather picks the top geocoding match.** Ambiguous names resolve to the most prominent place; the response includes `region` and `country` so it's visible which one, but there's no "did you mean" picker.
+- **Weather results aren't cached.** Every search makes two live calls to Open-Meteo. The per-user throttle keeps usage well inside the free tier; a short cache would be the next step for heavier traffic.
 - **`composer dev` doesn't include `php artisan pail`.** Pail needs the `pcntl` extension, which isn't available on Windows. Logs are written to `storage/logs/laravel.log`.

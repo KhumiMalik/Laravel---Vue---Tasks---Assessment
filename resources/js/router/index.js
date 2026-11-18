@@ -36,6 +36,12 @@ const routes = [
         meta: { requiresAuth: true, title: 'Trash' },
     },
     {
+        path: '/weather',
+        name: 'weather',
+        component: () => import('@/pages/Weather.vue'),
+        meta: { requiresAuth: true, title: 'Weather' },
+    },
+    {
         path: '/:pathMatch(.*)*',
         redirect: { name: 'dashboard' },
     },

@@ -23,5 +23,8 @@ class AppServiceProvider extends ServiceProvider
             : Password::min(8));
 
         RateLimiter::for('register', fn (Request $request) => Limit::perMinute(5)->by($request->ip()));
+
+        // each lookup is two calls to Open-Meteo's free tier, so don't let one account hammer it
+        RateLimiter::for('weather', fn (Request $request) => Limit::perMinute(30)->by($request->user()?->id ?: $request->ip()));
     }
 }

@@ -35,4 +35,14 @@ return [
         ],
     ],
 
+    // Public API, no key. Timeouts are in seconds; the user waits on two calls in a row
+    // (geocoding, then forecast). curl counts the TLS handshake as part of "connect",
+    // and that alone took ~4s from PHP on a Windows/Laragon box, so 3s was too tight.
+    'open_meteo' => [
+        'geocoding_url' => 'https://geocoding-api.open-meteo.com/v1/search',
+        'forecast_url' => 'https://api.open-meteo.com/v1/forecast',
+        'connect_timeout' => 5,
+        'timeout' => 10,
+    ],
+
 ];

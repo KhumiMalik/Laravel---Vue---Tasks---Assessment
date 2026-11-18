@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\TaskActivityController;
 use App\Http\Controllers\Api\TaskController;
+use App\Http\Controllers\Api\WeatherController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:register');
@@ -30,4 +31,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('tasks', TaskController::class);
 
     Route::get('/activities', TaskActivityController::class)->name('activities.index');
+
+    Route::get('/weather', WeatherController::class)->middleware('throttle:weather')->name('weather.show');
 });

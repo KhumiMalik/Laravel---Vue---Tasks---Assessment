@@ -2,7 +2,7 @@
 
 A full-stack task manager built with **Laravel 13** (REST API) and a **Vue 3** single-page app. Users register, sign in and manage their own tasks: create, edit, complete, search, filter, soft-delete, restore and permanently delete. Completing a task fires a domain event, and a queued listener records it in an activity feed shown on the dashboard.
 
-- **Repository:** _to be added_
+- **Repository:** https://github.com/KhumiMalik/Laravel---Vue---Tasks---Assessment
 - **Live demo:** _to be added_
 
 ---
@@ -213,7 +213,7 @@ There's no separate `user_id` index: the composite indexes lead with `user_id`, 
 
 ### Requirements
 
-- PHP 8.3+ with `pdo_mysql` (and `pdo_sqlite` for the tests)
+- PHP 8.3+ with `pdo_mysql` for the app, plus `pdo_sqlite` if you run the test suite with its default in-memory SQLite database (or point the tests at MySQL, see [Testing](#testing))
 - Composer 2
 - Node.js 22 or 24 LTS (Vitest 5 needs 22.12+; jsdom 31 declares 22.22+ / 24.15+)
 - MySQL 8
@@ -223,8 +223,8 @@ The project was developed on [Laragon](https://laragon.org/) (Windows) but has n
 ### Installation
 
 ```bash
-git clone <repository-url> moneta-assessment
-cd moneta-assessment
+git clone https://github.com/KhumiMalik/Laravel---Vue---Tasks---Assessment.git tasks-assessment
+cd tasks-assessment
 
 composer install
 npm install
@@ -239,10 +239,10 @@ Create the database, then check these values in `.env`:
 
 | Key | Default | Notes |
 |---|---|---|
-| `APP_URL` | `http://moneta-assessment.test` | The URL you'll open in the browser |
-| `DB_DATABASE` | `moneta_assessment` | Create it first: `CREATE DATABASE moneta_assessment;` |
+| `APP_URL` | `http://tasks-assessment.test` | The URL you'll open in the browser |
+| `DB_DATABASE` | `tasks_assessment` | Create it first: `CREATE DATABASE tasks_assessment;` |
 | `DB_USERNAME` / `DB_PASSWORD` | `root` / _(empty)_ | Laragon defaults |
-| `SANCTUM_STATEFUL_DOMAINS` | `moneta-assessment.test,localhost,localhost:8000,127.0.0.1,127.0.0.1:8000` | **Must include the host you browse from**, or every API call returns 401 |
+| `SANCTUM_STATEFUL_DOMAINS` | `tasks-assessment.test,localhost,localhost:8000,127.0.0.1,127.0.0.1:8000` | **Must include the host you browse from**, or every API call returns 401 |
 | `SESSION_DOMAIN` | `null` | Leave as is when the SPA and API share a host |
 | `QUEUE_CONNECTION` | `database` | Use `sync` to skip the worker; the activity feed then updates instantly |
 
@@ -279,7 +279,7 @@ php artisan queue:work   # needed for the "Recent activity" feed
 npm run dev              # or `npm run build` once for production assets
 ```
 
-**Laragon:** with the project in `C:\laragon\www\moneta-assessment`, click **Reload** in Laragon to create the `moneta-assessment.test` virtual host, then run `npm run build` (or `npm run dev`) and the queue worker.
+**Laragon:** with the project in `C:\laragon\www\tasks-assessment`, click **Reload** in Laragon to create the `tasks-assessment.test` virtual host, then run `npm run build` (or `npm run dev`) and the queue worker.
 
 ### Production build
 
@@ -306,10 +306,10 @@ To run the same suite against MySQL, create an empty database and override the c
 
 ```bash
 # bash
-DB_CONNECTION=mysql DB_DATABASE=moneta_assessment_testing php artisan test
+DB_CONNECTION=mysql DB_DATABASE=tasks_assessment_testing php artisan test
 
 # PowerShell
-$env:DB_CONNECTION='mysql'; $env:DB_DATABASE='moneta_assessment_testing'; php artisan test
+$env:DB_CONNECTION='mysql'; $env:DB_DATABASE='tasks_assessment_testing'; php artisan test
 ```
 
 **What's covered:**
